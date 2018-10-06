@@ -39,6 +39,7 @@ THE SOFTWARE.
 #include <pthread.h>
 #include <dirent.h>
 #include <stdarg.h>
+#include <libgen.h>
 #include "daemonize.h"
 
 //{{ daemon
@@ -65,7 +66,7 @@ void log2file(const char *fmt, ...)
 }
 //}}
 
-const char* python_file = "bakebit_nanohat_oled.py";
+const char* default_python_file = "BakeBit/Software/Python/bakebit_nanohat_oled.py";
 static int get_work_path(char* buff, int maxlen) {
     ssize_t len = readlink("/proc/self/exe", buff, maxlen);
     if (len == -1 || len == maxlen) {
@@ -80,6 +81,7 @@ static int get_work_path(char* buff, int maxlen) {
 
     return 0;
 }
+static char python_file[255];
 static char workpath[255];
 static int py_pids[128];
 static int pid_count = 0;
@@ -116,7 +118,17 @@ void* threadfunc(char* arg) {
 int load_python_view() {
     int ret;
     char* cmd = (char*)malloc(255);
-    sprintf(cmd, "cd %s/BakeBit/Software/Python && python %s 2>&1 | tee /tmp/nanoled-python.log", workpath, python_file);
+
+    // basename and dirname may modify its input, so create a copy to protect the original
+    char python_file_copy1[255];
+    char python_file_copy2[255];
+    strcpy(python_file_copy1, python_file);
+    strcpy(python_file_copy2, python_file);
+
+    sprintf(cmd, "cd %s && PYTHONPATH=%s/BakeBit/Software/Python python %s 2>&1 | tee /tmp/nanoled-python.log",
+        dirname(python_file_copy1), workpath, basename(python_file_copy2));
+
+    log2file("Creating pthread with '%s'\n", cmd);
     ret = pthread_create(&view_thread_id, NULL, (void*)threadfunc,cmd);
     if(ret) {
         log2file("create pthread error \n");
@@ -255,6 +267,35 @@ void sig_handler( int sig)
 }
 
 int main(int argc, char** argv) {
+
+    // Argparse
+    if (argc < 2) {
+        log2file("Using default python file\n");
+        strcpy(python_file, default_python_file);
+    } else if (argc > 2) {
+        "unexpected number of arguments\n";
+        exit(1);
+    } else {
+        strcpy(python_file, argv[1]);
+    }
+
+    // Make python_file be an absolute path
+    int ret = get_work_path(workpath, sizeof(workpath));
+    if (ret != 0) {
+        log2file("get_work_path ret error\n");
+        exit(1);
+    }
+
+    if (python_file[0] != '/') {
+        char buff[255];
+        strcpy(buff, workpath);
+        strcat(buff, "/");
+        strcat(buff, python_file);
+        strcpy(python_file, buff);
+    }
+
+    log2file("Using python file: %s\n", python_file);
+
     struct epoll_event ev_d0, ev_d1, ev_d2;
     struct epoll_event events[10];
     unsigned int value = 0;
@@ -267,11 +308,6 @@ int main(int argc, char** argv) {
     }
     daemonize( "nanohat-oled" );
 
-    int ret = get_work_path(workpath, sizeof(workpath));
-    if (ret != 0) {
-        log2file("get_work_path ret error\n");
-        return 1;
-    }
     sleep(3);
 
     epfd = epoll_create(1);
