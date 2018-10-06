@@ -24,8 +24,8 @@ if [ ! -f /usr/local/bin/oled-start ]; then
     cat >/usr/local/bin/oled-start <<EOL
 #!/bin/sh
 EOL
-    echo "cd $PWD" >> /usr/local/bin/oled-start
-    echo "./NanoHatOLED" >> /usr/local/bin/oled-start
+    echo "cd $PWD && ./NanoHatOLED Source/usr_nanohat_oled.py" >> /usr/local/bin/oled-start
+    echo "./NanoHatOLED Source/usr_nanohat_oled.py" >> /usr/local/bin/oled-start
     sed -i -e '$i \/usr/local/bin/oled-start\n' /etc/rc.local
     chmod 755 /usr/local/bin/oled-start
 fi
