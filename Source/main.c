@@ -35,7 +35,7 @@ THE SOFTWARE.
 #include <sys/epoll.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <time.h>  
+#include <time.h>
 #include <pthread.h>
 #include <dirent.h>
 #include <stdarg.h>
@@ -68,18 +68,18 @@ void log2file(const char *fmt, ...)
 const char* python_file = "bakebit_nanohat_oled.py";
 static int get_work_path(char* buff, int maxlen) {
     ssize_t len = readlink("/proc/self/exe", buff, maxlen);
-    if (len == -1 || len == maxlen) {                         
-        return -1;                                            
-    }                                
+    if (len == -1 || len == maxlen) {
+        return -1;
+    }
     buff[len] = '\0';
-                        
+
     char *pos = strrchr(buff, '/');
-    if (pos != 0) {                   
-       *pos = '\0';                   
-    }              
-                   
+    if (pos != 0) {
+       *pos = '\0';
+    }
+
     return 0;
-}            
+}
 static char workpath[255];
 static int py_pids[128];
 static int pid_count = 0;
