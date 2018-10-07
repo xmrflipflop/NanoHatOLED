@@ -89,11 +89,13 @@ class PageIndex(object):
     TIME = 0
     STATS = 1
     MENU = 2
-    _LEVEL1_MAX = 2
+    TEST = 3
+    _LEVEL1_MAX = 3
 
     SHUTDOWN_NO = 20
     SHUTDOWN_YES = 21
     SHUTTING_DOWN = 100
+
 
 
 def get_ip():
@@ -213,6 +215,9 @@ def draw_page():
     elif page_index == PageIndex.SHUTTING_DOWN:
         draw.text((2, 2),  'Shutting down',  font=fontb14, fill=255)
         draw.text((2, 20),  'Please wait',  font=font11, fill=255)
+
+    elif page_index == PageIndex.TEST:
+        draw.rectangle((2, 2, width-4, height-4), outline=0, fill=255)
 
     oled.drawImage(image)
 
