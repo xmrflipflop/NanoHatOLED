@@ -52,11 +52,11 @@ global height
 height = 64
 
 global pageCount
-pageCount = 2
+pageCount = 3
 global pageIndex
 pageIndex = 0
 global showPageIndicator
-showPageIndicator = False
+showPageIndicator = True
 
 oled.init()  # initialze SEEED OLED display
 oled.setNormalDisplay()  # Set display to normal mode (i.e non-inverse mode)
@@ -311,9 +311,9 @@ while True:
             os.system('systemctl poweroff')
             break
         elif page_index == PageIndex.TIME:
-            time.sleep(0.5)
+            time.sleep(0.25)
         else:
-            time.sleep(1)
+            time.sleep(0.5)
     except KeyboardInterrupt:
         break
     except IOError:
