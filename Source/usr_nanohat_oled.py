@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 #
-# BakeBit example for the basic functions of BakeBit 128x64 OLED (http://wiki.friendlyarm.com/wiki/index.php/BakeBit_-_OLED_128x64)
+# BakeBit code based on BakeBit 128x64 OLED (http://wiki.friendlyarm.com/wiki/index.php/BakeBit_-_OLED_128x64)
 #
 # The BakeBit connects the NanoPi NEO and BakeBit sensors.
 # You can learn more about BakeBit here:  http://wiki.friendlyarm.com/BakeBit
 #
-# Have a question about this example?  Ask on the forums here:  http://www.friendlyarm.com/Forum/
+# Have a question about this code?  Ask on the forums here:  http://www.friendlyarm.com/Forum/
 #
 '''
 ## License
@@ -83,6 +83,14 @@ font11 = ImageFont.truetype('DejaVuSansMono.ttf', 11);
 global lock
 lock = threading.Lock()
 
+class PageIndex(object):
+    TIME=0
+    STATS=1
+    SHUTDOWN_NO=3
+    SHUTDOWN_YES=4
+    SHUTTING_DOWN=5
+
+
 def get_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -139,14 +147,14 @@ def draw_page():
                 draw.rectangle((dotX, dotTop, dotX+dotWidth, dotTop+dotWidth), outline=255, fill=0)
             dotTop=dotTop+dotWidth+dotPadding
 
-    if page_index==0:
+    if page_index==PageIndex.TIME:
         text = time.strftime("%A")
         draw.text((2,2),text,font=font14,fill=255)
         text = time.strftime("%e %b %Y")
         draw.text((2,18),text,font=font14,fill=255)
         text = time.strftime("%X")
         draw.text((2,40),text,font=fontb24,fill=255)
-    elif page_index==1:
+    elif page_index==PageIndex.STATS:
         # Draw some shapes.
         # First define some constants to allow easy resizing of shapes.
         padding = 2
@@ -154,7 +162,7 @@ def draw_page():
         bottom = height-padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
-	IPAddress = get_ip()
+        IPAddress = get_ip()
         cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
         CPU = subprocess.check_output(cmd, shell = True )
         cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
@@ -171,7 +179,7 @@ def draw_page():
         draw.text((x, top+5+24),    str(MemUsage),  font=smartFont, fill=255)
         draw.text((x, top+5+36),    str(Disk),  font=smartFont, fill=255)
         draw.text((x, top+5+48),    tempStr,  font=smartFont, fill=255)
-    elif page_index==3: #shutdown -- no
+    elif page_index==PageIndex.SHUTDOWN_NO:
         draw.text((2, 2),  'Shutdown?',  font=fontb14, fill=255)
 
         draw.rectangle((2,20,width-4,20+16), outline=0, fill=0)
@@ -180,7 +188,7 @@ def draw_page():
         draw.rectangle((2,38,width-4,38+16), outline=0, fill=255)
         draw.text((4, 40),  'No',  font=font11, fill=0)
 
-    elif page_index==4: #shutdown -- yes
+    elif page_index==PageIndex.SHUTDOWN_YES:
         draw.text((2, 2),  'Shutdown?',  font=fontb14, fill=255)
 
         draw.rectangle((2,20,width-4,20+16), outline=0, fill=255)
@@ -189,7 +197,7 @@ def draw_page():
         draw.rectangle((2,38,width-4,38+16), outline=0, fill=0)
         draw.text((4, 40),  'No',  font=font11, fill=255)
 
-    elif page_index==5:
+    elif page_index==PageIndex.SHUTTING_DOWN:
         draw.text((2, 2),  'Shutting down',  font=fontb14, fill=255)
         draw.text((2, 20),  'Please wait',  font=font11, fill=255)
 
@@ -205,7 +213,7 @@ def is_showing_power_msgbox():
     lock.acquire()
     page_index = pageIndex
     lock.release()
-    if page_index==3 or page_index==4:
+    if page_index==PageIndex.SHUTDOWN_NO or page_index==PageIndex.SHUTDOWN_YES:
         return True
     return False
 
@@ -223,42 +231,42 @@ def receive_signal(signum, stack):
     page_index = pageIndex
     lock.release()
 
-    if page_index==5:
+    if page_index==PageIndex.SHUTTING_DOWN:
         return
 
     if signum == signal.SIGUSR1:
-        print 'K1 pressed'
+        print('K1 pressed')
         if is_showing_power_msgbox():
-            if page_index==3:
-                update_page_index(4)
+            if page_index==PageIndex.SHUTDOWN_NO:
+                update_page_index(PageIndex.SHUTDOWN_YES)
             else:
-                update_page_index(3)
+                update_page_index(PageIndex.SHUTDOWN_NO)
             draw_page()
         else:
-            pageIndex=0
+            pageIndex=PageIndex.TIME
             draw_page()
 
     if signum == signal.SIGUSR2:
-        print 'K2 pressed'
+        print('K2 pressed')
         if is_showing_power_msgbox():
-            if page_index==4:
-                update_page_index(5)
+            if page_index==PageIndex.SHUTDOWN_YES:
+                update_page_index(PageIndex.SHUTTING_DOWN)
                 draw_page()
  
             else:
-                update_page_index(0)
+                update_page_index(PageIndex.TIME)
                 draw_page()
         else:
-            update_page_index(1)
+            update_page_index(PageIndex.STATS)
             draw_page()
 
     if signum == signal.SIGALRM:
-        print 'K3 pressed'
+        print('K3 pressed')
         if is_showing_power_msgbox():
-            update_page_index(0)
+            update_page_index(PageIndex.TIME)
             draw_page()
         else:
-            update_page_index(3)
+            update_page_index(PageIndex.SHUTDOWN_NO)
             draw_page()
 
 
@@ -278,7 +286,7 @@ while True:
         page_index = pageIndex
         lock.release()
 
-        if page_index==5:
+        if page_index==PageIndex.SHUTTING_DOWN:
             time.sleep(2)
             while True:
                 lock.acquire()
@@ -300,4 +308,4 @@ while True:
     except KeyboardInterrupt:                                                                                                          
         break                     
     except IOError:                                                                              
-        print ("Error")
+        print("Error")
