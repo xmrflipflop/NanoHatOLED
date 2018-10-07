@@ -47,22 +47,22 @@ import os
 import socket
 
 global width
-width=128
+width = 128
 global height
-height=64
+height = 64
 
 global pageCount
-pageCount=2
+pageCount = 2
 global pageIndex
-pageIndex=0
+pageIndex = 0
 global showPageIndicator
-showPageIndicator=False
+showPageIndicator = False
 
-oled.init()  #initialze SEEED OLED display
-oled.setNormalDisplay()      #Set display to normal mode (i.e non-inverse mode)
+oled.init()  # initialze SEEED OLED display
+oled.setNormalDisplay()  # Set display to normal mode (i.e non-inverse mode)
 oled.setHorizontalMode()
 
-global drawing 
+global drawing
 drawing = False
 
 global image
@@ -71,7 +71,7 @@ global draw
 draw = ImageDraw.Draw(image)
 global fontb24
 fontb24 = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 24)
-global font14 
+global font14
 font14 = ImageFont.truetype('DejaVuSansMono.ttf', 14)
 global smartFont
 smartFont = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 10)
@@ -83,16 +83,17 @@ font11 = ImageFont.truetype('DejaVuSansMono.ttf', 11)
 global lock
 lock = threading.Lock()
 
-class PageIndex(object):
-    _LEVEL1_MIN=0
-    TIME=0
-    STATS=1
-    MENU=2
-    _LEVEL1_MAX=2
 
-    SHUTDOWN_NO=20
-    SHUTDOWN_YES=21
-    SHUTTING_DOWN=100
+class PageIndex(object):
+    _LEVEL1_MIN = 0
+    TIME = 0
+    STATS = 1
+    MENU = 2
+    _LEVEL1_MAX = 2
+
+    SHUTDOWN_NO = 20
+    SHUTDOWN_YES = 21
+    SHUTTING_DOWN = 100
 
 
 def get_ip():
@@ -106,6 +107,7 @@ def get_ip():
     finally:
         s.close()
     return IP
+
 
 def draw_page():
     global drawing
@@ -135,30 +137,32 @@ def draw_page():
     lock.acquire()
     drawing = True
     lock.release()
-    
-    # Draw a black filled box to clear the image.            
-    draw.rectangle((0,0,width,height), outline=0, fill=0)
+
+    # Draw a black filled box to clear the image.
+    draw.rectangle((0, 0, width, height), outline=0, fill=0)
     # Draw current page indicator
     if showPageIndicator:
-        dotWidth=4
-        dotPadding=2
-        dotX=width-dotWidth-1
-        dotTop=(height-pageCount*dotWidth-(pageCount-1)*dotPadding)/2
+        dotWidth = 4
+        dotPadding = 2
+        dotX = width-dotWidth-1
+        dotTop = (height-pageCount*dotWidth-(pageCount-1)*dotPadding)/2
         for i in range(pageCount):
-            if i==page_index:
-                draw.rectangle((dotX, dotTop, dotX+dotWidth, dotTop+dotWidth), outline=255, fill=255)
+            if i == page_index:
+                draw.rectangle((dotX, dotTop, dotX+dotWidth,
+                                dotTop+dotWidth), outline=255, fill=255)
             else:
-                draw.rectangle((dotX, dotTop, dotX+dotWidth, dotTop+dotWidth), outline=255, fill=0)
-            dotTop=dotTop+dotWidth+dotPadding
+                draw.rectangle((dotX, dotTop, dotX+dotWidth,
+                                dotTop+dotWidth), outline=255, fill=0)
+            dotTop = dotTop+dotWidth+dotPadding
 
-    if page_index==PageIndex.TIME:
+    if page_index == PageIndex.TIME:
         text = time.strftime("%A")
-        draw.text((2,2),text,font=font14,fill=255)
+        draw.text((2, 2), text, font=font14, fill=255)
         text = time.strftime("%e %b %Y")
-        draw.text((2,18),text,font=font14,fill=255)
+        draw.text((2, 18), text, font=font14, fill=255)
         text = time.strftime("%X")
-        draw.text((2,40),text,font=fontb24,fill=255)
-    elif page_index==PageIndex.STATS:
+        draw.text((2, 40), text, font=fontb24, fill=255)
+    elif page_index == PageIndex.STATS:
         # Draw some shapes.
         # First define some constants to allow easy resizing of shapes.
         padding = 2
@@ -168,44 +172,45 @@ def draw_page():
         x = 0
         IPAddress = get_ip()
         cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
-        CPU = subprocess.check_output(cmd, shell = True )
+        CPU = subprocess.check_output(cmd, shell=True)
         cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
-        MemUsage = subprocess.check_output(cmd, shell = True )
+        MemUsage = subprocess.check_output(cmd, shell=True)
         cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
-        Disk = subprocess.check_output(cmd, shell = True )
-        tempI = int(open('/sys/class/thermal/thermal_zone0/temp').read());
-        if tempI>1000:
+        Disk = subprocess.check_output(cmd, shell=True)
+        tempI = int(open('/sys/class/thermal/thermal_zone0/temp').read())
+        if tempI > 1000:
             tempI = tempI/1000
         tempStr = "CPU TEMP: %sC" % str(tempI)
 
-        draw.text((x, top+5),       "IP: " + str(IPAddress),  font=smartFont, fill=255)
+        draw.text((x, top+5),       "IP: " +
+                  str(IPAddress),  font=smartFont, fill=255)
         draw.text((x, top+5+12),    str(CPU), font=smartFont, fill=255)
         draw.text((x, top+5+24),    str(MemUsage),  font=smartFont, fill=255)
         draw.text((x, top+5+36),    str(Disk),  font=smartFont, fill=255)
         draw.text((x, top+5+48),    tempStr,  font=smartFont, fill=255)
 
-    elif page_index==PageIndex.MENU:
+    elif page_index == PageIndex.MENU:
         draw.text((4, 22),  'Shutdown?',  font=fontb14, fill=255)
 
-    elif page_index==PageIndex.SHUTDOWN_NO:
+    elif page_index == PageIndex.SHUTDOWN_NO:
         draw.text((2, 2),  'Shutdown?',  font=fontb14, fill=255)
 
-        draw.rectangle((2,20,width-4,20+16), outline=0, fill=0)
+        draw.rectangle((2, 20, width-4, 20+16), outline=0, fill=0)
         draw.text((4, 22),  'Yes',  font=font11, fill=255)
 
-        draw.rectangle((2,38,width-4,38+16), outline=0, fill=255)
+        draw.rectangle((2, 38, width-4, 38+16), outline=0, fill=255)
         draw.text((4, 40),  'No',  font=font11, fill=0)
 
-    elif page_index==PageIndex.SHUTDOWN_YES:
+    elif page_index == PageIndex.SHUTDOWN_YES:
         draw.text((2, 2),  'Shutdown?',  font=fontb14, fill=255)
 
-        draw.rectangle((2,20,width-4,20+16), outline=0, fill=255)
+        draw.rectangle((2, 20, width-4, 20+16), outline=0, fill=255)
         draw.text((4, 22),  'Yes',  font=font11, fill=0)
 
-        draw.rectangle((2,38,width-4,38+16), outline=0, fill=0)
+        draw.rectangle((2, 38, width-4, 38+16), outline=0, fill=0)
         draw.text((4, 40),  'No',  font=font11, fill=255)
 
-    elif page_index==PageIndex.SHUTTING_DOWN:
+    elif page_index == PageIndex.SHUTTING_DOWN:
         draw.text((2, 2),  'Shutting down',  font=fontb14, fill=255)
         draw.text((2, 20),  'Please wait',  font=font11, fill=255)
 
@@ -217,7 +222,8 @@ def draw_page():
 
 
 def is_showing_power_msgbox(page_index):
-    return page_index==PageIndex.SHUTDOWN_NO or page_index==PageIndex.SHUTDOWN_YES
+    return page_index == PageIndex.SHUTDOWN_NO or page_index == PageIndex.SHUTDOWN_YES
+
 
 def update_page_index(pi):
     global pageIndex
@@ -286,7 +292,7 @@ while True:
         page_index = pageIndex
         lock.release()
 
-        if page_index==PageIndex.SHUTTING_DOWN:
+        if page_index == PageIndex.SHUTTING_DOWN:
             time.sleep(2)
             while True:
                 lock.acquire()
@@ -304,8 +310,11 @@ while True:
             time.sleep(1)
             os.system('systemctl poweroff')
             break
-        time.sleep(1)
-    except KeyboardInterrupt:                                                                                                          
-        break                     
-    except IOError:                                                                              
+        elif page_index == PageIndex.TIME:
+            time.sleep(0.5)
+        else:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        break
+    except IOError:
         print("Error")
