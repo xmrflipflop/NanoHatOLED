@@ -70,25 +70,29 @@ image = Image.new('1', (width, height))
 global draw
 draw = ImageDraw.Draw(image)
 global fontb24
-fontb24 = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 24);
+fontb24 = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 24)
 global font14 
-font14 = ImageFont.truetype('DejaVuSansMono.ttf', 14);
+font14 = ImageFont.truetype('DejaVuSansMono.ttf', 14)
 global smartFont
-smartFont = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 10);
+smartFont = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 10)
 global fontb14
-fontb14 = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 14);
+fontb14 = ImageFont.truetype('DejaVuSansMono-Bold.ttf', 14)
 global font11
-font11 = ImageFont.truetype('DejaVuSansMono.ttf', 11);
+font11 = ImageFont.truetype('DejaVuSansMono.ttf', 11)
 
 global lock
 lock = threading.Lock()
 
 class PageIndex(object):
+    _LEVEL1_MIN=0
     TIME=0
     STATS=1
-    SHUTDOWN_NO=3
-    SHUTDOWN_YES=4
-    SHUTTING_DOWN=5
+    MENU=2
+    _LEVEL1_MAX=2
+
+    SHUTDOWN_NO=20
+    SHUTDOWN_YES=21
+    SHUTTING_DOWN=100
 
 
 def get_ip():
@@ -179,6 +183,10 @@ def draw_page():
         draw.text((x, top+5+24),    str(MemUsage),  font=smartFont, fill=255)
         draw.text((x, top+5+36),    str(Disk),  font=smartFont, fill=255)
         draw.text((x, top+5+48),    tempStr,  font=smartFont, fill=255)
+
+    elif page_index==PageIndex.MENU:
+        draw.text((4, 22),  'Shutdown?',  font=fontb14, fill=255)
+
     elif page_index==PageIndex.SHUTDOWN_NO:
         draw.text((2, 2),  'Shutdown?',  font=fontb14, fill=255)
 
@@ -208,21 +216,15 @@ def draw_page():
     lock.release()
 
 
-def is_showing_power_msgbox():
-    global pageIndex
-    lock.acquire()
-    page_index = pageIndex
-    lock.release()
-    if page_index==PageIndex.SHUTDOWN_NO or page_index==PageIndex.SHUTDOWN_YES:
-        return True
-    return False
-
+def is_showing_power_msgbox(page_index):
+    return page_index==PageIndex.SHUTDOWN_NO or page_index==PageIndex.SHUTDOWN_YES
 
 def update_page_index(pi):
     global pageIndex
     lock.acquire()
     pageIndex = pi
     lock.release()
+
 
 def receive_signal(signum, stack):
     global pageIndex
@@ -231,43 +233,41 @@ def receive_signal(signum, stack):
     page_index = pageIndex
     lock.release()
 
-    if page_index==PageIndex.SHUTTING_DOWN:
+    if page_index == PageIndex.SHUTTING_DOWN:
         return
 
     if signum == signal.SIGUSR1:
+        # Toggle page
         print('K1 pressed')
-        if is_showing_power_msgbox():
-            if page_index==PageIndex.SHUTDOWN_NO:
-                update_page_index(PageIndex.SHUTDOWN_YES)
-            else:
-                update_page_index(PageIndex.SHUTDOWN_NO)
-            draw_page()
-        else:
-            pageIndex=PageIndex.TIME
-            draw_page()
+        if page_index == PageIndex._LEVEL1_MAX:
+            update_page_index(PageIndex._LEVEL1_MIN)
+        elif page_index < PageIndex._LEVEL1_MAX:
+            update_page_index(page_index + 1)
 
-    if signum == signal.SIGUSR2:
-        print('K2 pressed')
-        if is_showing_power_msgbox():
-            if page_index==PageIndex.SHUTDOWN_YES:
-                update_page_index(PageIndex.SHUTTING_DOWN)
-                draw_page()
- 
-            else:
-                update_page_index(PageIndex.TIME)
-                draw_page()
-        else:
-            update_page_index(PageIndex.STATS)
-            draw_page()
-
-    if signum == signal.SIGALRM:
-        print('K3 pressed')
-        if is_showing_power_msgbox():
-            update_page_index(PageIndex.TIME)
-            draw_page()
-        else:
+        elif page_index == PageIndex.SHUTDOWN_NO:
+            update_page_index(PageIndex.SHUTDOWN_YES)
+        elif page_index == PageIndex.SHUTDOWN_YES:
             update_page_index(PageIndex.SHUTDOWN_NO)
-            draw_page()
+
+    elif signum == signal.SIGUSR2:
+        # Home or back
+        print('K2 pressed')
+        if is_showing_power_msgbox(page_index):
+            update_page_index(PageIndex.MENU)
+        else:
+            update_page_index(PageIndex.TIME)
+
+    elif signum == signal.SIGALRM:
+        # Select
+        print('K3 pressed')
+        if page_index == PageIndex.MENU:
+            update_page_index(PageIndex.SHUTDOWN_NO)
+        elif page_index == PageIndex.SHUTDOWN_NO:
+            update_page_index(PageIndex.MENU)
+        elif page_index == PageIndex.SHUTDOWN_YES:
+            update_page_index(PageIndex.SHUTTING_DOWN)
+
+    # draw_page()
 
 
 image0 = Image.open('friendllyelec.png').convert('1')
