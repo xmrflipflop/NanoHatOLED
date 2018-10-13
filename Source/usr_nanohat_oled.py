@@ -45,6 +45,7 @@ import threading
 import signal
 import os
 import socket
+import re
 
 global width
 width = 128
@@ -96,7 +97,7 @@ class PageIndex(object):
     SHUTTING_DOWN = 100
 
 
-def get_ip():
+def get_lan_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         # doesn't even have to be reachable
@@ -107,6 +108,22 @@ def get_ip():
     finally:
         s.close()
     return IP
+
+
+def is_valid_ip(ip):
+    m = re.match(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$", ip)
+    return bool(m) and all(map(lambda n: 0 <= int(n) <= 255, m.groups()))
+
+
+def get_wan_ip():
+    # Relies on duckdns responses.
+    try:
+        tokens = []
+        with open('/tmp/duck.response', 'r') as f:
+            tokens = f.read().split()
+        return next(x for x in tokens if is_valid_ip(x))
+    except:
+        return "--.--.--.--"
 
 
 def get_cpu_usage():
@@ -183,8 +200,8 @@ def draw_page():
         bottom = height-padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
-        IPAddress = get_ip()
-        WANIP = "--.--.--.--"
+        LANIP = get_lan_ip()
+        WANIP = get_wan_ip()
         CPU = get_cpu_usage()
         cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
         MemUsage = subprocess.check_output(cmd, shell=True)
@@ -196,7 +213,7 @@ def draw_page():
         tempStr = "CPU TEMP: %sC" % str(tempI)
         cpuStr = "CPU: {0:.2f} %  {1}C".format(CPU, tempI)
 
-        draw.text((x, top),       "LAN: {0}".format(IPAddress),  font=smartFont, fill=255)
+        draw.text((x, top),       "LAN: {0}".format(LANIP),  font=smartFont, fill=255)
         draw.text((x, top+12),    "WAN: {0}".format(WANIP), font=smartFont, fill=255)
         draw.text((x, top+24),    cpuStr,  font=smartFont, fill=255)
         draw.text((x, top+36),    str(MemUsage),  font=smartFont, fill=255)
