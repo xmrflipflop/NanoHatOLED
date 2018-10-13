@@ -109,6 +109,16 @@ def get_ip():
     return IP
 
 
+def get_cpu_usage():
+    """
+    Returns CPU usage as %
+    See: https://rosettacode.org/wiki/Linux_CPU_utilization
+    """
+    cmd = "iostat -c | sed -n '/avg-cpu/{n;p;}' | awk '{print $NF}'"
+    idle = subprocess.check_output(cmd, shell=True)
+    return 100.0 - float(idle)
+
+
 def draw_page():
     global drawing
     global image
@@ -156,23 +166,26 @@ def draw_page():
             dotTop = dotTop+dotWidth+dotPadding
 
     if page_index == PageIndex.TIME:
+        padding = 0
+        top = padding
+
         text = time.strftime("%A")
-        draw.text((2, 2), text, font=font14, fill=255)
+        draw.text((2, top), text, font=font14, fill=255)
         text = time.strftime("%e %b %Y")
-        draw.text((2, 18), text, font=font14, fill=255)
+        draw.text((2, top+16), text, font=font14, fill=255)
         text = time.strftime("%X")
-        draw.text((2, 40), text, font=fontb24, fill=255)
+        draw.text((2, top+38), text, font=fontb24, fill=255)
     elif page_index == PageIndex.STATS:
         # Draw some shapes.
         # First define some constants to allow easy resizing of shapes.
-        padding = 2
+        padding = 1
         top = padding
         bottom = height-padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
         IPAddress = get_ip()
-        cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
-        CPU = subprocess.check_output(cmd, shell=True)
+        WANIP = "--.--.--.--"
+        CPU = get_cpu_usage()
         cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
         MemUsage = subprocess.check_output(cmd, shell=True)
         cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
@@ -181,13 +194,13 @@ def draw_page():
         if tempI > 1000:
             tempI = tempI/1000
         tempStr = "CPU TEMP: %sC" % str(tempI)
+        cpuStr = "CPU: {0:.2f} %  {1}C".format(CPU, tempI)
 
-        draw.text((x, top+5),       "IP: " +
-                  str(IPAddress),  font=smartFont, fill=255)
-        draw.text((x, top+5+12),    str(CPU), font=smartFont, fill=255)
-        draw.text((x, top+5+24),    str(MemUsage),  font=smartFont, fill=255)
-        draw.text((x, top+5+36),    str(Disk),  font=smartFont, fill=255)
-        draw.text((x, top+5+48),    tempStr,  font=smartFont, fill=255)
+        draw.text((x, top),       "LAN: {0}".format(IPAddress),  font=smartFont, fill=255)
+        draw.text((x, top+12),    "WAN: {0}".format(WANIP), font=smartFont, fill=255)
+        draw.text((x, top+24),    cpuStr,  font=smartFont, fill=255)
+        draw.text((x, top+36),    str(MemUsage),  font=smartFont, fill=255)
+        draw.text((x, top+48),    str(Disk),  font=smartFont, fill=255)
 
     elif page_index == PageIndex.MENU:
         draw.text((4, 22),  'Shutdown?',  font=fontb14, fill=255)
